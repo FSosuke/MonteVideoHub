@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.asStateFlow
 enum class DownloadFormat(val label: String) { AUDIO("Audio (.m4a)"), VIDEO("Video (.mp4)") }
 
 enum class Region(val label: String, val language: String, val country: String) {
-    DE("Deutschland", "de", "DE"),
     JP("日本 (Japan)", "ja", "JP"),
+    DE("Deutschland", "de", "DE"),
 }
 
 data class AppSettings(
@@ -20,7 +20,8 @@ data class AppSettings(
     /** SAF-Ordner (content://…/tree/…) für Downloads, null = noch nicht gewählt */
     val downloadTreeUri: String? = null,
     val askFolderEachTime: Boolean = true,
-    val region: Region = Region.DE,
+    /** Japanisches YouTube als Standard (Trends, Suche, Empfehlungen) */
+    val region: Region = Region.JP,
     val autoUpdateCheck: Boolean = true,
 )
 
@@ -33,6 +34,10 @@ object Settings {
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        // Version 2: Region auf Japan umstellen (vorher Deutschland als Standard)
+        if (prefs.getInt("version", 1) < 2) {
+            prefs.edit().putString("region", Region.JP.name).putInt("version", 2).apply()
+        }
         val d = AppSettings()
         _state.value = AppSettings(
             videoMode = prefs.getBoolean("video_mode", d.videoMode),
