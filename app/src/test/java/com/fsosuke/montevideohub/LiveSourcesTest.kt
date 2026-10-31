@@ -39,7 +39,7 @@ class LiveSourcesTest {
         }
 
     @Test
-    fun youtubeSearchAndStream() = runBlocking {
+    fun youtubeSearchAndStream(): Unit = runBlocking {
         for (musicOnly in listOf(true, false)) {
             val tracks = YouTubeSource.search("YOASOBI アイドル", musicOnly)
             println("YouTube (musicOnly=$musicOnly): ${tracks.size} Treffer")
@@ -53,7 +53,7 @@ class LiveSourcesTest {
     }
 
     @Test
-    fun homeFeeds() = runBlocking {
+    fun homeFeeds(): Unit = runBlocking {
         println("YouTube-Kioske: ${YouTubeSource.kioskIds()}")
         val (name, yt) = YouTubeSource.home()
         println("YouTube-Start „$name“: ${yt.size} Titel")
@@ -68,7 +68,7 @@ class LiveSourcesTest {
 
     /** Lädt die Audiospur eines kurzen niconico-Videos komplett herunter und prüft die Entschlüsselung. */
     @Test
-    fun niconicoDownloadDecrypts() = runBlocking {
+    fun niconicoDownloadDecrypts(): Unit = runBlocking {
         val master = NicoHls.master(NicoSource.resolve("sm9").uri)
         println("Master: audio=${master.audioUrl != null}, Varianten=${master.variants.map { "${it.height}p" }}")
         val out = File.createTempFile("nico", ".mp4")
@@ -79,10 +79,11 @@ class LiveSourcesTest {
         assertTrue("ftyp fehlt", text.contains("ftyp"))
         assertTrue("moof fehlt – Entschlüsselung kaputt?", text.contains("moof"))
         out.delete()
+        Unit
     }
 
     @Test
-    fun niconicoSearchAndStream() = runBlocking {
+    fun niconicoSearchAndStream(): Unit = runBlocking {
         for (musicOnly in listOf(true, false)) {
             val tracks = NicoSource.search("千本桜", musicOnly)
             println("niconico (musicOnly=$musicOnly): ${tracks.size} Treffer")
