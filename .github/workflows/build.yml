@@ -60,7 +60,7 @@ jobs:
 
       # GitHub-Release = Update-Quelle für den In-App-Updater
       - name: Release veröffentlichen
-        if: steps.signing.outputs.available == 'true' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ccr-29110944-g9i8in')
+        if: steps.signing.outputs.available == 'true' && github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ccr-29110944-g9i8in')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
