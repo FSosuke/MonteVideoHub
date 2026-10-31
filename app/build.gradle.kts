@@ -13,15 +13,46 @@ android {
         // Xperia 5 V startet mit Android 13 – 26 hält die App trotzdem breit kompatibel.
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // Jeder CI-Lauf = neue Build-Nummer; daran erkennt der In-App-Updater neue Versionen.
+        val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionCode = buildNumber
+        versionName = "0.2.$buildNumber"
+
+        buildConfigField("String", "UPDATE_REPO", "\"FSosuke/MonteVideoHub\"")
     }
 
+    // Feste Signatur aus GitHub-Secrets (nie im Repo!), damit Updates über alte Versionen passen.
+    // Lokal ohne diese Variablen wird mit dem normalen Debug-Schlüssel signiert.
+    val keystorePath = System.getenv("SIGNING_KEYSTORE_FILE")
+    val signingPassword = System.getenv("SIGNING_PASSWORD")
+    val monteSigning = if (!keystorePath.isNullOrBlank() && !signingPassword.isNullOrBlank()) {
+        signingConfigs.create("monte") {
+            storeFile = file(keystorePath)
+            storePassword = signingPassword
+            keyAlias = "montevideohub"
+            keyPassword = signingPassword
+        }
+    } else null
+
     buildTypes {
+        debug {
+            monteSigning?.let { signingConfig = it }
+        }
         release {
             // NewPipeExtractor + Rhino brauchen eigene ProGuard-Regeln; vorerst ohne Minify.
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = monteSigning ?: signingConfigs.getByName("debug")
+        }
+    }
+
+    testOptions {
+        unitTests.all {
+            it.environment("LIVE_TESTS", System.getenv("LIVE_TESTS") ?: "0")
+            it.testLogging {
+                showStandardStreams = true
+                events("passed", "failed", "skipped")
+                exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            }
         }
     }
 
@@ -35,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {
@@ -80,5 +112,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.9.0")
 
     // YouTube-Suche und Stream-Auflösung (wie NewPipe)
-    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.8")
+    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

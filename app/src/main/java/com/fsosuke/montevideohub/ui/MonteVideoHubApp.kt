@@ -26,12 +26,17 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fsosuke.montevideohub.ui.components.MontedioBackground
+import com.fsosuke.montevideohub.update.UpdateDialog
+import com.fsosuke.montevideohub.update.UpdateViewModel
+import kotlinx.coroutines.flow.merge
 
 @Composable
 fun MonteVideoHubApp(
     searchVm: SearchViewModel = viewModel(),
     playerVm: PlayerViewModel = viewModel(),
+    updateVm: UpdateViewModel = viewModel(),
 ) {
+    val update by updateVm.state.collectAsStateWithLifecycle()
     val search by searchVm.state.collectAsStateWithLifecycle()
     val player by playerVm.state.collectAsStateWithLifecycle()
     val resolving by playerVm.resolving.collectAsStateWithLifecycle()
@@ -39,7 +44,7 @@ fun MonteVideoHubApp(
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
-        playerVm.messages.collect { message ->
+        merge(playerVm.messages, updateVm.messages).collect { message ->
             snackbar.currentSnackbarData?.dismiss()
             snackbar.showSnackbar(message)
         }
@@ -79,6 +84,11 @@ fun MonteVideoHubApp(
                 onPlay = playerVm::play,
                 onPlayNext = playerVm::playNext,
                 onEnqueue = playerVm::enqueue,
+                updateAvailable = update.available != null,
+                checkingUpdate = update.checking,
+                onUpdateClick = {
+                    if (update.available != null) updateVm.openDialog() else updateVm.check(manual = true)
+                },
             )
         }
 
@@ -89,5 +99,14 @@ fun MonteVideoHubApp(
         ) {
             PlayerScreen(state = player, vm = playerVm, onClose = { playerOpen = false })
         }
+    }
+
+    if (update.showDialog) {
+        UpdateDialog(
+            state = update,
+            installedBuild = updateVm.installedBuild,
+            onInstall = updateVm::install,
+            onDismiss = updateVm::dismiss,
+        )
     }
 }

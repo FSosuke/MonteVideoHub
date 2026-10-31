@@ -82,7 +82,11 @@ object Http {
         client.newCall(request).execute().use { response ->
             val body = response.body?.string().orEmpty()
             if (!response.isSuccessful) {
-                throw IOException("HTTP ${response.code} von ${request.url.host}")
+                val code = runCatching { JSONObject(body).optJSONObject("meta")?.optString("errorCode") }
+                    .getOrNull()?.takeIf { it.isNotBlank() }
+                throw IOException(
+                    "HTTP ${response.code} von ${request.url.host}" + (code?.let { " ($it)" } ?: "")
+                )
             }
             JSONObject(body)
         }

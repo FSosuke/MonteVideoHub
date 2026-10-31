@@ -2,8 +2,12 @@ name: Build APK
 
 on:
   push:
+    paths-ignore: ['.github/probe/**', '.github/workflows/probe.yml', '**.md']
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,10 +22,50 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      # Signaturschlüssel aus den Repo-Secrets (Settings → Secrets and variables → Actions)
+      - name: Signaturschlüssel bereitstellen
+        id: signing
+        env:
+          KEYSTORE_B64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/montevideohub.jks"
+            echo "SIGNING_KEYSTORE_FILE=$RUNNER_TEMP/montevideohub.jks" >> "$GITHUB_ENV"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secret SIGNING_KEYSTORE_BASE64 fehlt – APK mit Debug-Schlüssel, keine Release (keine In-App-Updates)."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build APK
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+        run: ./gradlew assembleRelease
+
+      # Echte Anfragen an YouTube und niconico (Suche + Stream). Darf fehlschlagen,
+      # weil YouTube Rechenzentrums-IPs manchmal blockiert – das Handy ist davon nicht betroffen.
+      - name: Live-Check YouTube & niconico
+        continue-on-error: true
+        env:
+          LIVE_TESTS: "1"
+        run: ./gradlew testReleaseUnitTest
+
+      - name: APK umbenennen
+        run: cp app/build/outputs/apk/release/app-release.apk "MonteVideoHub-b${{ github.run_number }}.apk"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: MonteVideoHub-debug
-          path: app/build/outputs/apk/debug/*.apk
+          name: MonteVideoHub-b${{ github.run_number }}
+          path: MonteVideoHub-b*.apk
+
+      # GitHub-Release = Update-Quelle für den In-App-Updater
+      - name: Release veröffentlichen
+        if: steps.signing.outputs.available == 'true' && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ccr-29110944-g9i8in')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "b${{ github.run_number }}" MonteVideoHub-b*.apk \
+            --target "${{ github.sha }}" \
+            --title "MonteVideoHub Build ${{ github.run_number }}" \
+            --notes "$(git log -1 --pretty=%B | grep -v -e '^Co-Authored-By' -e '^Claude-Session')" \
+            --latest

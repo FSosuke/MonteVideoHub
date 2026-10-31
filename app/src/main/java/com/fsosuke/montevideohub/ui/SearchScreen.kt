@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -65,6 +69,9 @@ fun SearchScreen(
     onPlay: (Track) -> Unit,
     onPlayNext: (Track) -> Unit,
     onEnqueue: (Track) -> Unit,
+    updateAvailable: Boolean,
+    checkingUpdate: Boolean,
+    onUpdateClick: () -> Unit,
 ) {
     val focus = LocalFocusManager.current
     Column(
@@ -73,7 +80,7 @@ fun SearchScreen(
             .statusBarsPadding()
             .padding(bottom = contentPadding.calculateBottomPadding())
     ) {
-        Header()
+        Header(updateAvailable, checkingUpdate, onUpdateClick)
 
         OutlinedTextField(
             value = state.query,
@@ -169,8 +176,12 @@ fun SearchScreen(
 }
 
 @Composable
-private fun Header() {
-    Column(Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 12.dp)) {
+private fun Header(updateAvailable: Boolean, checking: Boolean, onUpdateClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+    ) {
+    Column(Modifier.weight(1f)) {
         Text(
             buildAnnotatedString {
                 append("Monte")
@@ -188,6 +199,16 @@ private fun Header() {
             letterSpacing = 1.sp,
             color = Snow.copy(alpha = 0.6f),
         )
+    }
+        IconButton(onClick = onUpdateClick) {
+            if (checking) {
+                CircularProgressIndicator(color = MontedioYellow, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
+            } else {
+                BadgedBox(badge = { if (updateAvailable) Badge(containerColor = MontedioYellow) }) {
+                    Icon(Icons.Rounded.SystemUpdate, contentDescription = "Nach Updates suchen")
+                }
+            }
+        }
     }
 }
 

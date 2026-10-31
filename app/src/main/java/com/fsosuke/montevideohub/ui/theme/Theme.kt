@@ -1,9 +1,44 @@
 package com.fsosuke.montevideohub.ui.theme
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import com.fsosuke.montevideohub.R
+
+/** Hausschrift von montedioyamagata.jp: Noto Sans JP (SIL Open Font License). */
+val NotoSansJp = FontFamily(
+    Font(R.font.noto_sans_jp_regular, FontWeight.Normal),
+    Font(R.font.noto_sans_jp_bold, FontWeight.Bold),
+    Font(R.font.noto_sans_jp_black, FontWeight.Black),
+)
+
+private fun TextStyle.noto() = copy(fontFamily = NotoSansJp)
+
+private val MonteTypography = Typography().run {
+    Typography(
+        displayLarge = displayLarge.noto(),
+        displayMedium = displayMedium.noto(),
+        displaySmall = displaySmall.noto(),
+        headlineLarge = headlineLarge.noto(),
+        headlineMedium = headlineMedium.noto(),
+        headlineSmall = headlineSmall.noto(),
+        titleLarge = titleLarge.noto(),
+        titleMedium = titleMedium.noto(),
+        titleSmall = titleSmall.noto(),
+        bodyLarge = bodyLarge.noto(),
+        bodyMedium = bodyMedium.noto(),
+        bodySmall = bodySmall.noto(),
+        labelLarge = labelLarge.noto(),
+        labelMedium = labelMedium.noto(),
+        labelSmall = labelSmall.noto(),
+    )
+}
 
 // Montedio-Yamagata-Palette: Nachtblau, Vereinsblau, Gelb, Weiß
 val Navy950 = Color(0xFF03061F)
@@ -42,5 +77,5 @@ private val MontedioColors = darkColorScheme(
 
 @Composable
 fun MonteTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = MontedioColors, content = content)
+    MaterialTheme(colorScheme = MontedioColors, typography = MonteTypography, content = content)
 }
