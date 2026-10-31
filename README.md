@@ -8,7 +8,9 @@ Werbefreie Musik-App für Android (optimiert für das **Sony Xperia 5 V**), die
 
 - 🔎 **Kombinierte Suche** – YouTube und niconico parallel, Ergebnisse gemischt
   (Filter: Alle / YouTube / niconico, Schalter „Nur Musik“)
-- 🎵 **Nur Audio** – keine Werbung, weniger Datenverbrauch, Videospuren werden gar nicht geladen
+- 🎬 **Video oder nur Audio** – umschaltbar im Player (Kamera/Kopfhörer-Symbol). Video bis 1080p,
+  Vollbild im Querformat mit Zoom auf das 21:9-Display; im Audio-Modus wird kein Video geladen
+- 🚫 **Keine Werbung** – Streams werden direkt abgespielt
 - 📱 **Hintergrundwiedergabe** mit Benachrichtigung, Sperrbildschirm- & Kopfhörersteuerung (Media3)
 - ⏭️ **SponsorBlock** (wie bei ReVanced) – überspringt bei YouTube automatisch
   Nicht-Musik-Teile in Musikvideos, Sponsoren und Eigenwerbung

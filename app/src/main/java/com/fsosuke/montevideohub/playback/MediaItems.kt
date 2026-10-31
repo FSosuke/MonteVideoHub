@@ -9,6 +9,7 @@ import com.fsosuke.montevideohub.data.Track
 
 object MediaItems {
     const val EXTRA_MIME = "mime"
+    const val EXTRA_VIDEO_URI = "videoUri"
     const val EXTRA_SOURCE = "source"
 
     fun from(track: Track, stream: ResolvedStream): MediaItem {
@@ -20,7 +21,7 @@ object MediaItems {
             .setRequestMetadata(
                 MediaItem.RequestMetadata.Builder()
                     .setMediaUri(uri)
-                    .setExtras(bundleOf(EXTRA_MIME to stream.mimeType))
+                    .setExtras(bundleOf(EXTRA_MIME to stream.mimeType, EXTRA_VIDEO_URI to stream.videoUri))
                     .build()
             )
             .setMediaMetadata(

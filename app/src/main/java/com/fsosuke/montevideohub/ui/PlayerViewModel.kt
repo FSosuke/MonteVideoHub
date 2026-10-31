@@ -3,9 +3,11 @@ package com.fsosuke.montevideohub.ui
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
+import com.fsosuke.montevideohub.data.Prefs
 import com.fsosuke.montevideohub.data.SearchRepository
 import com.fsosuke.montevideohub.data.Track
 import com.fsosuke.montevideohub.playback.MediaItems
@@ -25,6 +27,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     private val connection = PlayerConnection(app, viewModelScope)
     val state: StateFlow<PlayerUiState> = connection.state
+    val player: StateFlow<Player?> = connection.player
 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     val messages: SharedFlow<String> = _messages.asSharedFlow()
@@ -75,6 +78,15 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun skipTo(index: Int) = connection.use { it.seekToDefaultPosition(index); it.start() }
     fun remove(index: Int) = connection.use { it.removeMediaItem(index) }
     fun toggleShuffle() = connection.use { it.shuffleModeEnabled = !it.shuffleModeEnabled }
+
+    fun setVideoMode(enabled: Boolean) {
+        Prefs.setVideoMode(getApplication(), enabled)
+        connection.use {
+            it.trackSelectionParameters = it.trackSelectionParameters.buildUpon()
+                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !enabled)
+                .build()
+        }
+    }
 
     fun cycleRepeat() = connection.use {
         it.repeatMode = when (it.repeatMode) {

@@ -25,4 +25,8 @@ data class Track(
     val key: String get() = "${source.name}:$id"
 }
 
-data class ResolvedStream(val uri: String, val mimeType: String?)
+/**
+ * @param uri Audio- (bzw. kombinierter HLS-) Stream
+ * @param videoUri separater Videostream (YouTube liefert Bild und Ton getrennt), sonst null
+ */
+data class ResolvedStream(val uri: String, val mimeType: String?, val videoUri: String? = null)

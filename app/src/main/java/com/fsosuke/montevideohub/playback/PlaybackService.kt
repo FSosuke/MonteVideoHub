@@ -10,11 +10,11 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.fsosuke.montevideohub.MainActivity
 import com.fsosuke.montevideohub.data.Http
+import com.fsosuke.montevideohub.data.Prefs
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -36,7 +36,7 @@ class PlaybackService : MediaSessionService() {
 
         val dataSourceFactory = DefaultDataSource.Factory(this, OkHttpDataSource.Factory(Http.client))
         val player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+            .setMediaSourceFactory(MonteMediaSourceFactory(dataSourceFactory))
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -48,9 +48,10 @@ class PlaybackService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
-        // Musik-App: Videospuren (niconico-HLS) gar nicht erst laden.
+        // Audio-Modus: Videospuren gar nicht erst laden (spart Daten). Umschaltbar im Player.
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, true)
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !Prefs.videoMode(this))
+            .setMaxVideoSize(1920, 1080)
             .build()
 
         SponsorSkipper(player, scope)

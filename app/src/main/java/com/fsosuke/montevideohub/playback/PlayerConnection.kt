@@ -41,6 +41,10 @@ data class PlayerUiState(
     val currentIndex: Int = -1,
     val shuffle: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
+    /** Video-Modus aktiv (sonst nur Ton). */
+    val videoMode: Boolean = true,
+    /** Aktueller Titel hat eine Videospur. */
+    val hasVideo: Boolean = false,
 )
 
 /** Verbindet die UI per MediaController mit dem PlaybackService. */
@@ -53,6 +57,10 @@ class PlayerConnection(context: Context, scope: CoroutineScope) {
     ).buildAsync()
 
     private var controller: MediaController? = null
+
+    private val _player = MutableStateFlow<Player?>(null)
+    /** Für die Videoanzeige (PlayerView). */
+    val player: StateFlow<Player?> = _player.asStateFlow()
 
     private val _state = MutableStateFlow(PlayerUiState())
     val state: StateFlow<PlayerUiState> = _state.asStateFlow()
@@ -77,6 +85,7 @@ class PlayerConnection(context: Context, scope: CoroutineScope) {
                 return@launch
             }
             controller = c
+            _player.value = c
             c.addListener(listener)
             refresh()
             while (isActive) {
@@ -109,11 +118,14 @@ class PlayerConnection(context: Context, scope: CoroutineScope) {
             currentIndex = c.currentMediaItemIndex,
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
+            videoMode = C.TRACK_TYPE_VIDEO !in c.trackSelectionParameters.disabledTrackTypes,
+            hasVideo = c.currentTracks.containsType(C.TRACK_TYPE_VIDEO),
         )
     }
 
     fun release() {
         controller?.removeListener(listener)
+        _player.value = null
         MediaController.releaseFuture(future)
     }
 

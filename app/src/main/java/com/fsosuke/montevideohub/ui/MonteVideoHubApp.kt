@@ -39,6 +39,8 @@ fun MonteVideoHubApp(
     val update by updateVm.state.collectAsStateWithLifecycle()
     val search by searchVm.state.collectAsStateWithLifecycle()
     val player by playerVm.state.collectAsStateWithLifecycle()
+    val exoPlayer by playerVm.player.collectAsStateWithLifecycle()
+    var fullscreen by rememberSaveable { mutableStateOf(false) }
     val resolving by playerVm.resolving.collectAsStateWithLifecycle()
     var playerOpen by rememberSaveable { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
@@ -50,7 +52,12 @@ fun MonteVideoHubApp(
         }
     }
 
-    BackHandler(enabled = playerOpen) { playerOpen = false }
+    BackHandler(enabled = playerOpen && !fullscreen) { playerOpen = false }
+
+    // Wechsel auf „nur Audio“ oder Player leer → Vollbild verlassen
+    LaunchedEffect(player.videoMode, player.current == null) {
+        if (!player.videoMode || player.current == null) fullscreen = false
+    }
 
     Box(Modifier.fillMaxSize()) {
         // Ohne Ergebnisse ist das Wappen gut sichtbar, mit Liste stärker abgedunkelt.
@@ -97,7 +104,18 @@ fun MonteVideoHubApp(
             enter = slideInVertically { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut(),
         ) {
-            PlayerScreen(state = player, vm = playerVm, onClose = { playerOpen = false })
+            PlayerScreen(
+                state = player,
+                player = exoPlayer,
+                vm = playerVm,
+                showVideo = !fullscreen,
+                onFullscreen = { fullscreen = true },
+                onClose = { playerOpen = false },
+            )
+        }
+
+        if (fullscreen) {
+            FullscreenVideo(state = player, player = exoPlayer, vm = playerVm, onExit = { fullscreen = false })
         }
     }
 

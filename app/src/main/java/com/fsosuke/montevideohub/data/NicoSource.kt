@@ -75,18 +75,20 @@ object NicoSource {
             .filter { it.optBoolean("isAvailable") }
             .maxByOrNull { it.optInt("bitRate") }
             ?: throw IOException("Keine Audiospur verfügbar")
-        // Für eine reine Musik-App die kleinste Videospur – sie wird im Player ohnehin deaktiviert.
-        val video = domand.optJSONArray("videos").objects()
+        // Alle verfügbaren Videoqualitäten anfordern – der Player wählt passend zur Verbindung.
+        // Im Audio-Modus ist die Videospur deaktiviert und wird gar nicht geladen.
+        val videos = domand.optJSONArray("videos").objects()
             .filter { it.optBoolean("isAvailable") }
-            .minByOrNull { it.optInt("bitRate", Int.MAX_VALUE) }
-            ?: throw IOException("Keine Videospur verfügbar")
+            .ifEmpty { throw IOException("Keine Videospur verfügbar") }
 
         val accessKey = domand.getString("accessRightKey")
         val actionTrackId = api.optJSONObject("client")?.optString("watchTrackId")
             ?.takeIf { it.isNotBlank() } ?: trackId
 
         val body = JSONObject()
-            .put("outputs", JSONArray().put(JSONArray().put(video.getString("id")).put(audio.getString("id"))))
+            .put("outputs", JSONArray().apply {
+                videos.forEach { put(JSONArray().put(it.getString("id")).put(audio.getString("id"))) }
+            })
             .toString()
             .toRequestBody("application/json".toMediaType())
 

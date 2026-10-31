@@ -25,6 +25,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Fullscreen
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.Videocam
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -49,6 +52,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -59,13 +64,21 @@ import com.fsosuke.montevideohub.playback.PlayerUiState
 import com.fsosuke.montevideohub.ui.components.Artwork
 import com.fsosuke.montevideohub.ui.components.MontedioBackground
 import com.fsosuke.montevideohub.ui.components.SourceBadge
+import com.fsosuke.montevideohub.ui.components.VideoSurface
 import com.fsosuke.montevideohub.ui.theme.MontedioYellow
 import com.fsosuke.montevideohub.ui.theme.Navy800
 import com.fsosuke.montevideohub.ui.theme.Navy900
 import com.fsosuke.montevideohub.ui.theme.Snow
 
 @Composable
-fun PlayerScreen(state: PlayerUiState, vm: PlayerViewModel, onClose: () -> Unit) {
+fun PlayerScreen(
+    state: PlayerUiState,
+    player: Player?,
+    vm: PlayerViewModel,
+    showVideo: Boolean,
+    onFullscreen: () -> Unit,
+    onClose: () -> Unit,
+) {
     val current = state.current ?: return
     Box(Modifier.fillMaxSize()) {
         MontedioBackground(dim = 0.88f)
@@ -90,18 +103,48 @@ fun PlayerScreen(state: PlayerUiState, vm: PlayerViewModel, onClose: () -> Unit)
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )
-                Spacer(Modifier.width(48.dp))
+                // Umschalter Audio ⇄ Video
+                IconButton(onClick = { vm.setVideoMode(!state.videoMode) }) {
+                    Icon(
+                        if (state.videoMode) Icons.Rounded.Videocam else Icons.Rounded.Headphones,
+                        contentDescription = if (state.videoMode) "Video-Modus (tippen für nur Audio)" else "Audio-Modus (tippen für Video)",
+                        tint = MontedioYellow,
+                    )
+                }
             }
 
             Spacer(Modifier.height(12.dp))
-            Artwork(
-                current.artwork,
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth(0.82f)
-                    .aspectRatio(1f)
-                    .border(BorderStroke(2.dp, MontedioYellow), RoundedCornerShape(20.dp)),
-            )
+            if (state.videoMode && state.hasVideo) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .border(BorderStroke(2.dp, MontedioYellow), RoundedCornerShape(16.dp))
+                        .background(Color.Black)
+                ) {
+                    if (showVideo) {
+                        VideoSurface(player = player, keepScreenOn = state.isPlaying, modifier = Modifier.fillMaxSize())
+                    }
+                    IconButton(
+                        onClick = onFullscreen,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp),
+                    ) {
+                        Icon(Icons.Rounded.Fullscreen, contentDescription = "Vollbild", tint = Snow)
+                    }
+                }
+            } else {
+                Artwork(
+                    current.artwork,
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth(0.82f)
+                        .aspectRatio(1f)
+                        .border(BorderStroke(2.dp, MontedioYellow), RoundedCornerShape(20.dp)),
+                )
+            }
             Spacer(Modifier.height(20.dp))
 
             Text(
