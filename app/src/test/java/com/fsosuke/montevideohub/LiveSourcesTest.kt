@@ -5,6 +5,7 @@ import com.fsosuke.montevideohub.data.NewPipeDownloader
 import com.fsosuke.montevideohub.data.NicoSource
 import com.fsosuke.montevideohub.data.YouTubeSource
 import kotlinx.coroutines.runBlocking
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
@@ -66,7 +67,7 @@ class LiveSourcesTest {
         println(master.take(800))
         val audioUri = Regex("URI=\"([^\"]+)\"").find(master)?.groupValues?.get(1)
         assertTrue("Keine Audio-Rendition in der Master-Playlist", audioUri != null)
-        val audioUrl = okhttp3.HttpUrl.Companion.run { stream.uri.toHttpUrl().resolve(audioUri!!).toString() }
+        val audioUrl = stream.uri.toHttpUrl().resolve(audioUri!!).toString()
         val audioPlaylist = Http.client.newCall(Request.Builder().url(audioUrl).build()).execute().use {
             println("  -> Audio-Playlist HTTP ${it.code}")
             it.body?.string().orEmpty()
@@ -75,13 +76,11 @@ class LiveSourcesTest {
         val keyUri = Regex("#EXT-X-KEY:[^\\n]*URI=\"([^\"]+)\"").find(audioPlaylist)?.groupValues?.get(1)
         if (keyUri != null) {
             println("Schlüssel:")
-            assertTrue(fetchStart(audioUrl.toHttpUrlCompat().resolve(keyUri).toString(), rangeHeader = false) in 200..299)
+            assertTrue(fetchStart(audioUrl.toHttpUrl().resolve(keyUri).toString(), rangeHeader = false) in 200..299)
         }
         val segment = audioPlaylist.lines().firstOrNull { it.isNotBlank() && !it.startsWith("#") }
         assertTrue("Kein Segment", segment != null)
         println("Erstes Segment:")
-        assertTrue(fetchStart(audioUrl.toHttpUrlCompat().resolve(segment!!).toString(), rangeHeader = false) in 200..299)
+        assertTrue(fetchStart(audioUrl.toHttpUrl().resolve(segment!!).toString(), rangeHeader = false) in 200..299)
     }
-
-    private fun String.toHttpUrlCompat() = okhttp3.HttpUrl.Companion.run { this@toHttpUrlCompat.toHttpUrl() }
 }
