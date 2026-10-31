@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Videocam
@@ -60,7 +62,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
+import com.fsosuke.montevideohub.data.DownloadFormat
+import com.fsosuke.montevideohub.data.Track
 import com.fsosuke.montevideohub.playback.PlayerUiState
+import com.fsosuke.montevideohub.playback.toTrack
+import com.fsosuke.montevideohub.ui.components.DownloadMenuItems
 import com.fsosuke.montevideohub.ui.components.Artwork
 import com.fsosuke.montevideohub.ui.components.MontedioBackground
 import com.fsosuke.montevideohub.ui.components.SourceBadge
@@ -77,6 +83,7 @@ fun PlayerScreen(
     vm: PlayerViewModel,
     showVideo: Boolean,
     onFullscreen: () -> Unit,
+    onDownload: (Track, DownloadFormat) -> Unit,
     onClose: () -> Unit,
 ) {
     val current = state.current ?: return
@@ -103,6 +110,18 @@ fun PlayerScreen(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.weight(1f),
                 )
+                // Herunterladen
+                current.toTrack()?.let { track ->
+                    var menuOpen by remember { mutableStateOf(false) }
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Rounded.Download, contentDescription = "Herunterladen", tint = Snow)
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DownloadMenuItems(onDownload = { menuOpen = false; onDownload(track, it) })
+                        }
+                    }
+                }
                 // Umschalter Audio ⇄ Video
                 IconButton(onClick = { vm.setVideoMode(!state.videoMode) }) {
                     Icon(

@@ -25,7 +25,7 @@ object SearchRepository {
                 nicoResult?.exceptionOrNull()?.let { add("niconico: ${it.message ?: it.javaClass.simpleName}") }
             }
             SearchResult(
-                interleave(ytResult?.getOrNull().orEmpty(), nicoResult?.getOrNull().orEmpty()),
+                interleave(ytResult?.getOrNull().orEmpty(), nicoResult?.getOrNull().orEmpty()).distinctBy { it.key },
                 errors,
             )
         }

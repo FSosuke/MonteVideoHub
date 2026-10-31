@@ -6,6 +6,13 @@ Werbefreie Musik-App für Android (optimiert für das **Sony Xperia 5 V**), die
 
 ## Funktionen
 
+- 🏠 **Startseite** wie bei YouTube/niconico – YouTube-Trends, niconico-Rankings (Musik & Gesamt),
+  „Zuletzt gespielt“, Filter-Chips, zum Aktualisieren nach unten ziehen
+- ⬇️ **Downloads** als Audio (.m4a) oder Video (.mp4) in einen **selbst gewählten Ordner**
+  (fragt auf Wunsch jedes Mal), offline abspielbar, Fortschritt in der Benachrichtigung
+- ⚙️ **Einstellungen** – Konten, Videoqualität, SponsorBlock, Download-Ordner, Region, Updates
+- 👤 **niconico-Login** (offizielle Login-Seite in der App) für Login-Videos & Premium-Qualität
+
 - 🔎 **Kombinierte Suche** – YouTube und niconico parallel, Ergebnisse gemischt
   (Filter: Alle / YouTube / niconico, Schalter „Nur Musik“)
 - 🎬 **Video oder nur Audio** – umschaltbar im Player (Kamera/Kopfhörer-Symbol). Video bis 1080p,

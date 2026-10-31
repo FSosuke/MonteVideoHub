@@ -31,7 +31,7 @@ class UpdateViewModel(app: Application) : AndroidViewModel(app) {
     val installedBuild = Updater.installedBuild
 
     init {
-        check(manual = false)
+        if (com.fsosuke.montevideohub.data.Settings.value.autoUpdateCheck) check(manual = false)
     }
 
     fun check(manual: Boolean) {

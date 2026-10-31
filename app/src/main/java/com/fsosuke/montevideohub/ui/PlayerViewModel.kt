@@ -7,7 +7,13 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
-import com.fsosuke.montevideohub.data.Prefs
+import android.net.Uri
+import androidx.media3.common.MediaMetadata
+import com.fsosuke.montevideohub.data.History
+import com.fsosuke.montevideohub.data.Settings
+import com.fsosuke.montevideohub.download.DownloadEntry
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.fsosuke.montevideohub.data.SearchRepository
 import com.fsosuke.montevideohub.data.Track
 import com.fsosuke.montevideohub.playback.MediaItems
@@ -38,6 +44,40 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch { connection.errors.collect { _messages.emit(it) } }
+        // Einstellungen (Video-Modus, max. Qualität) live auf den Player anwenden
+        viewModelScope.launch {
+            Settings.state.map { it.videoMode to it.maxVideoHeight }.distinctUntilChanged().collect { (video, height) ->
+                val c = connection.await()
+                c.trackSelectionParameters = c.trackSelectionParameters.buildUpon()
+                    .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !video)
+                    .setMaxVideoSize(Int.MAX_VALUE, height)
+                    .build()
+            }
+        }
+    }
+
+    /** Heruntergeladene Datei abspielen (offline). */
+    fun playLocal(entry: DownloadEntry) {
+        viewModelScope.launch {
+            val c = connection.await()
+            val uri = Uri.parse(entry.uri)
+            val item = MediaItem.Builder()
+                .setMediaId("LOCAL:${entry.id}")
+                .setUri(uri)
+                .setRequestMetadata(MediaItem.RequestMetadata.Builder().setMediaUri(uri).build())
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(entry.track.title)
+                        .setArtist(entry.track.artist)
+                        .setArtworkUri(entry.track.thumbnail?.let(Uri::parse))
+                        .build()
+                )
+                .build()
+            val index = if (c.mediaItemCount == 0) 0 else c.currentMediaItemIndex + 1
+            c.addMediaItem(index, item)
+            c.seekToDefaultPosition(index)
+            c.start()
+        }
     }
 
     /** Sofort abspielen – die restliche Warteschlange bleibt erhalten. */
@@ -79,14 +119,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
     fun remove(index: Int) = connection.use { it.removeMediaItem(index) }
     fun toggleShuffle() = connection.use { it.shuffleModeEnabled = !it.shuffleModeEnabled }
 
-    fun setVideoMode(enabled: Boolean) {
-        Prefs.setVideoMode(getApplication(), enabled)
-        connection.use {
-            it.trackSelectionParameters = it.trackSelectionParameters.buildUpon()
-                .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !enabled)
-                .build()
-        }
-    }
+    fun setVideoMode(enabled: Boolean) = Settings.update { it.copy(videoMode = enabled) }
 
     fun cycleRepeat() = connection.use {
         it.repeatMode = when (it.repeatMode) {
@@ -107,6 +140,7 @@ class PlayerViewModel(app: Application) : AndroidViewModel(app) {
             _resolving.update { it + track.key }
             try {
                 val stream = SearchRepository.resolve(track)
+                History.add(track)
                 action(connection.await(), MediaItems.from(track, stream))
             } catch (e: CancellationException) {
                 throw e

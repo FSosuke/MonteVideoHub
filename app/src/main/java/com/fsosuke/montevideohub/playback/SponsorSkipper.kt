@@ -2,6 +2,7 @@ package com.fsosuke.montevideohub.playback
 
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import com.fsosuke.montevideohub.data.Settings
 import com.fsosuke.montevideohub.data.Source
 import com.fsosuke.montevideohub.data.SponsorBlock
 import kotlinx.coroutines.CoroutineScope
@@ -46,7 +47,7 @@ class SponsorSkipper(
     }
 
     private fun check() {
-        if (!player.isPlaying || segments.isEmpty()) return
+        if (!Settings.value.sponsorBlock || !player.isPlaying || segments.isEmpty()) return
         val pos = player.currentPosition
         segments.firstOrNull { pos >= it.startMs && pos < it.endMs - 500 }?.let {
             player.seekTo(it.endMs)

@@ -37,9 +37,27 @@ object NicoSource {
             .apply { if (musicOnly) addQueryParameter("genres", "music_sound") }
             .build()
 
-        val items = Http.json(Request.Builder().url(url).nicoApiHeaders().build())
-            .getJSONObject("data")
-            .optJSONArray("items")
+        parseItems(
+            Http.json(Request.Builder().url(url).nicoApiHeaders().build())
+                .getJSONObject("data")
+                .optJSONArray("items")
+        )
+    }
+
+    /** Ranking der letzten 24 h, z. B. genre = "music_sound" oder "all". */
+    suspend fun ranking(genre: String = "music_sound"): List<Track> = withContext(Dispatchers.IO) {
+        val url = "https://nvapi.nicovideo.jp/v1/ranking/genre/$genre".toHttpUrl().newBuilder()
+            .addQueryParameter("term", "24h")
+            .build()
+        parseItems(
+            Http.json(Request.Builder().url(url).nicoApiHeaders().build())
+                .getJSONObject("data")
+                .optJSONArray("items")
+        )
+    }
+
+    /** Gemeinsames Format von Suche und Ranking. */
+    private fun parseItems(items: JSONArray?): List<Track> =
         items.objects()
             .filter { !it.optBoolean("isPaymentRequired") }
             .map { o ->
@@ -55,18 +73,10 @@ object NicoSource {
                     views = o.optJSONObject("count")?.optLong("view", -1) ?: -1,
                 )
             }
-    }
 
     suspend fun resolve(id: String): ResolvedStream = withContext(Dispatchers.IO) {
         val trackId = randomTrackId()
-        // Hinweis: "/watch/<id>?responseType=json" antwortet inzwischen mit HTTP 400.
-        val watchUrl = "https://www.nicovideo.jp/api/watch/v3_guest/$id".toHttpUrl().newBuilder()
-            .addQueryParameter("_frontendId", "6")
-            .addQueryParameter("_frontendVersion", "0")
-            .addQueryParameter("actionTrackId", trackId)
-            .build()
-        val api = Http.json(Request.Builder().url(watchUrl).nicoApiHeaders().build())
-            .getJSONObject("data")
+        val api = watchData(id, trackId)
 
         val domand = api.optJSONObject("media")?.optJSONObject("domand")
             ?: throw IOException("Video nur mit niconico-Login bzw. Premium abspielbar")
@@ -108,6 +118,31 @@ object NicoSource {
         // Die Antwort setzt das Cookie `domand_bid`, das Http.client automatisch weiterverwendet.
         val contentUrl = response.getJSONObject("data").getString("contentUrl")
         ResolvedStream(contentUrl, "application/x-mpegURL")
+    }
+
+    /**
+     * Watch-Daten: angemeldet über /api/watch/v3 (Login-Videos, Premium-Qualität),
+     * sonst bzw. als Fallback über die Gast-API.
+     * Hinweis: "/watch/<id>?responseType=json" antwortet inzwischen mit HTTP 400.
+     */
+    private fun watchData(id: String, trackId: String): JSONObject {
+        fun load(path: String) = Http.json(
+            Request.Builder()
+                .url(
+                    "https://www.nicovideo.jp/api/watch/$path/$id".toHttpUrl().newBuilder()
+                        .addQueryParameter("_frontendId", "6")
+                        .addQueryParameter("_frontendVersion", "0")
+                        .addQueryParameter("actionTrackId", trackId)
+                        .build()
+                )
+                .nicoApiHeaders()
+                .build()
+        ).getJSONObject("data")
+
+        if (NicoAccount.isLoggedIn) {
+            runCatching { return load("v3") }
+        }
+        return load("v3_guest")
     }
 
     private fun randomTrackId(): String {

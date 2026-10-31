@@ -30,6 +30,20 @@ data class QueueEntry(
     val source: Source?,
 )
 
+/** Für Downloads aus dem Player: Warteschlangen-Eintrag zurück in einen Track wandeln. */
+fun QueueEntry.toTrack(): com.fsosuke.montevideohub.data.Track? {
+    val src = source ?: return null
+    return com.fsosuke.montevideohub.data.Track(
+        source = src,
+        id = mediaId.substringAfter(':'),
+        title = title,
+        artist = artist,
+        durationSec = -1,
+        thumbnail = artwork,
+        views = -1,
+    )
+}
+
 data class PlayerUiState(
     val connected: Boolean = false,
     val current: QueueEntry? = null,

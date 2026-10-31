@@ -49,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fsosuke.montevideohub.data.DownloadFormat
 import com.fsosuke.montevideohub.data.SourceFilter
 import com.fsosuke.montevideohub.data.Track
 import com.fsosuke.montevideohub.ui.components.TrackRow
@@ -69,6 +70,7 @@ fun SearchScreen(
     onPlay: (Track) -> Unit,
     onPlayNext: (Track) -> Unit,
     onEnqueue: (Track) -> Unit,
+    onDownload: (Track, DownloadFormat) -> Unit,
     updateAvailable: Boolean,
     checkingUpdate: Boolean,
     onUpdateClick: () -> Unit,
@@ -147,6 +149,7 @@ fun SearchScreen(
                             onPlay = { onPlay(track) },
                             onPlayNext = { onPlayNext(track) },
                             onEnqueue = { onEnqueue(track) },
+                            onDownload = { onDownload(track, it) },
                         )
                     }
                 }
@@ -176,7 +179,7 @@ fun SearchScreen(
 }
 
 @Composable
-private fun Header(updateAvailable: Boolean, checking: Boolean, onUpdateClick: () -> Unit) {
+fun Header(updateAvailable: Boolean, checking: Boolean, onUpdateClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),

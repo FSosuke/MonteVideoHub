@@ -77,6 +77,27 @@ object Http {
         }
         .build()
 
+    /** Fügt ein dauerhaftes Cookie hinzu (z. B. niconico-Login). Gilt auch für Subdomains. */
+    fun setCookie(domain: String, name: String, value: String) {
+        val cookie = Cookie.Builder()
+            .domain(domain)
+            .path("/")
+            .name(name)
+            .value(value)
+            .secure()
+            .httpOnly()
+            .expiresAt(System.currentTimeMillis() + 365L * 24 * 3600 * 1000)
+            .build()
+        synchronized(cookies) {
+            cookies.removeAll { it.name == name && it.domain == domain }
+            cookies.add(cookie)
+        }
+    }
+
+    fun removeCookie(name: String) {
+        synchronized(cookies) { cookies.removeAll { it.name == name } }
+    }
+
     /** Blockierender JSON-Request – nur aus Dispatchers.IO aufrufen. */
     fun json(request: Request): JSONObject =
         client.newCall(request).execute().use { response ->

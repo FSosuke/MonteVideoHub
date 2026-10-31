@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.fsosuke.montevideohub.data.DownloadFormat
 import com.fsosuke.montevideohub.data.Source
 import com.fsosuke.montevideohub.data.Track
 import com.fsosuke.montevideohub.ui.formatDuration
@@ -46,6 +49,7 @@ fun TrackRow(
     onPlay: () -> Unit,
     onPlayNext: () -> Unit,
     onEnqueue: () -> Unit,
+    onDownload: (DownloadFormat) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -106,6 +110,7 @@ fun TrackRow(
                             leadingIcon = { Icon(Icons.Rounded.Add, null) },
                             onClick = { menuOpen = false; onEnqueue() },
                         )
+                        DownloadMenuItems(onDownload = { menuOpen = false; onDownload(it) })
                     }
                 }
             }
@@ -118,3 +123,18 @@ private fun subtitle(track: Track): String = listOfNotNull(
     formatDuration(track.durationSec).ifEmpty { null },
     formatViews(track.views).ifEmpty { null },
 ).joinToString(" · ")
+
+/** Menüeinträge „Herunterladen (Audio/Video)“ – auch im Player und auf der Startseite genutzt. */
+@Composable
+fun DownloadMenuItems(onDownload: (DownloadFormat) -> Unit) {
+    DropdownMenuItem(
+        text = { Text("Herunterladen (Audio)") },
+        leadingIcon = { Icon(Icons.Rounded.Headphones, null) },
+        onClick = { onDownload(DownloadFormat.AUDIO) },
+    )
+    DropdownMenuItem(
+        text = { Text("Herunterladen (Video)") },
+        leadingIcon = { Icon(Icons.Rounded.Download, null) },
+        onClick = { onDownload(DownloadFormat.VIDEO) },
+    )
+}

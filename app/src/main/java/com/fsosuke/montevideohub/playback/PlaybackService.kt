@@ -14,7 +14,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.fsosuke.montevideohub.MainActivity
 import com.fsosuke.montevideohub.data.Http
-import com.fsosuke.montevideohub.data.Prefs
+import com.fsosuke.montevideohub.data.Settings
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -50,8 +50,8 @@ class PlaybackService : MediaSessionService() {
 
         // Audio-Modus: Videospuren gar nicht erst laden (spart Daten). Umschaltbar im Player.
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !Prefs.videoMode(this))
-            .setMaxVideoSize(1920, 1080)
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, !Settings.value.videoMode)
+            .setMaxVideoSize(Int.MAX_VALUE, Settings.value.maxVideoHeight)
             .build()
 
         SponsorSkipper(player, scope)

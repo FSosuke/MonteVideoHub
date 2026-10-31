@@ -4,6 +4,8 @@ import com.fsosuke.montevideohub.data.Http
 import com.fsosuke.montevideohub.data.NewPipeDownloader
 import com.fsosuke.montevideohub.data.NicoSource
 import com.fsosuke.montevideohub.data.YouTubeSource
+import com.fsosuke.montevideohub.download.NicoHls
+import java.io.File
 import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
@@ -48,6 +50,35 @@ class LiveSourcesTest {
         val stream = YouTubeSource.resolve(track.id)
         println("YouTube-Stream: ${stream.uri.take(160)}… (mime=${stream.mimeType})")
         assertTrue(fetchStart(stream.uri) in 200..299)
+    }
+
+    @Test
+    fun homeFeeds() = runBlocking {
+        println("YouTube-Kioske: ${YouTubeSource.kioskIds()}")
+        val (name, yt) = YouTubeSource.home()
+        println("YouTube-Start „$name“: ${yt.size} Titel")
+        yt.take(3).forEach { println("  ${it.id} | ${it.title} | ${it.artist}") }
+        for (genre in listOf("music_sound", "all")) {
+            val nico = NicoSource.ranking(genre)
+            println("niconico-Ranking $genre: ${nico.size} Titel")
+            nico.take(3).forEach { println("  ${it.id} | ${it.title} | ${it.artist}") }
+            assertTrue(nico.isNotEmpty())
+        }
+    }
+
+    /** Lädt die Audiospur eines kurzen niconico-Videos komplett herunter und prüft die Entschlüsselung. */
+    @Test
+    fun niconicoDownloadDecrypts() = runBlocking {
+        val master = NicoHls.master(NicoSource.resolve("sm9").uri)
+        println("Master: audio=${master.audioUrl != null}, Varianten=${master.variants.map { "${it.height}p" }}")
+        val out = File.createTempFile("nico", ".mp4")
+        NicoHls.downloadRendition(master.audioUrl!!, out) {}
+        val bytes = out.readBytes()
+        val text = String(bytes, Charsets.ISO_8859_1)
+        println("Audio-Datei: ${bytes.size} Bytes, ftyp=${text.contains("ftyp")}, moof=${text.contains("moof")}, mdat=${text.contains("mdat")}")
+        assertTrue("ftyp fehlt", text.contains("ftyp"))
+        assertTrue("moof fehlt – Entschlüsselung kaputt?", text.contains("moof"))
+        out.delete()
     }
 
     @Test

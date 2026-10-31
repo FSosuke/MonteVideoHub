@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -39,7 +38,7 @@ fun MiniPlayer(
 ) {
     val current = state.current ?: return
     Surface(onClick = onOpen, color = Navy800.copy(alpha = 0.96f), modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.navigationBarsPadding()) {
+        Column {
             LinearProgressIndicator(
                 progress = {
                     if (state.durationMs > 0) (state.positionMs.toFloat() / state.durationMs).coerceIn(0f, 1f) else 0f
