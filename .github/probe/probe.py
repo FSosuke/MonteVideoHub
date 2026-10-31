@@ -18,71 +18,68 @@ def req(url, data=None, headers=None, method=None):
 
 def section(t): print("\n==== " + t + " ====", flush=True)
 
-section("JitPack NewPipeExtractor")
-for u in ["https://jitpack.io/api/builds/com.github.TeamNewPipe/NewPipeExtractor/latest",
-          "https://jitpack.io/api/builds/com.github.TeamNewPipe/NewPipeExtractor/latestOk"]:
-    s, b, _ = req(u); print(u, s, b[:300])
-s, b, _ = req("https://jitpack.io/api/builds/com.github.TeamNewPipe/NewPipeExtractor")
-print("builds", s, b[:3000])
 
-section("Montedio fonts")
-s, html, _ = req("https://www.montedioyamagata.jp/")
-print("home", s, len(html))
-for m in sorted(set(re.findall(r'(?:href|src)="([^"]+?(?:\.css|fonts?[^"]*|typekit[^"]*|typesquare[^"]*))"', html))): print("link", m)
-for m in sorted(set(re.findall(r'font-family:[^;"}]+', html))): print("inline", m)
-css_links = re.findall(r'href="([^"]+?\.css[^"]*)"', html)
-for c in css_links[:15]:
-    url = urllib.parse.urljoin("https://www.montedioyamagata.jp/", c)
-    s, css, _ = req(url)
-    fams = sorted(set(re.findall(r'font-family:\s*([^;}]+)', css)))
-    faces = re.findall(r'@font-face\s*{[^}]+}', css)
-    imports = re.findall(r'@import[^;]+;', css)
-    print("CSS", url, s, "families:", fams[:20])
-    for f in faces[:10]: print("  FACE", f[:400])
-    for i in imports: print("  IMPORT", i)
+section("Google Fonts")
+s, css, _ = req("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900", headers={"User-Agent": "curl/8"})
+print(s, css[:600])
 
-section("niconico snapshot")
-base = "https://snapshot.search.nicovideo.jp/api/v2/snapshot/video/contents/search"
-common = [("q", "初音ミク"), ("targets", "title,tags,description"),
-          ("fields", "contentId,title,thumbnailUrl,lengthSeconds,viewCounter,userId,channelId"),
-          ("_sort", "-viewCounter"), ("_limit", "3"), ("_context", "MonteVideoHub")]
-for name, extra in [("plain", []),
-                    ("genre.keyword", [("filters[genre.keyword][0]", "音楽・サウンド"), ("filters[genre.keyword][1]", "音楽")]),
-                    ("genre", [("filters[genre][0]", "音楽・サウンド")])]:
-    s, b, _ = req(base + "?" + urllib.parse.urlencode(common + extra))
-    print(name, s, b[:700])
-
-section("niconico nvapi search")
-for u in ["https://nvapi.nicovideo.jp/v2/search/video?" + urllib.parse.urlencode({"keyword": "初音ミク", "sortKey": "viewCount", "sortOrder": "desc", "pageSize": 3, "page": 1}),
-          "https://www.nicovideo.jp/search/" + urllib.parse.quote("初音ミク") + "?responseType=json"]:
-    s, b, _ = req(u, headers={"X-Frontend-Id": "6", "X-Frontend-Version": "0"})
-    print(u, s, b[:1500])
-
-section("niconico watch sm9")
+section("niconico watch variants")
 api_h = {"X-Frontend-Id": "6", "X-Frontend-Version": "0", "X-Niconico-Language": "ja-jp",
          "Referer": "https://www.nicovideo.jp/", "Origin": "https://www.nicovideo.jp"}
 tid = "".join(random.choices(string.ascii_letters + string.digits, k=10)) + "_" + str(int(time.time() * 1000))
-for vid in ["sm9", "sm45000000"]:
-    s, b, _ = req(f"https://www.nicovideo.jp/watch/{vid}?responseType=json&actionTrackId={tid}", headers=api_h)
-    print(vid, "watch", s, b[:300] if s != 200 else "")
-    if s != 200: continue
-    j = json.loads(b)
-    resp = j.get("data", {}).get("response", {})
-    print("top keys", list(j.keys()), "data keys", list(j.get("data", {}).keys()), "response keys", list(resp.keys())[:40])
-    dom = (resp.get("media") or {}).get("domand")
-    print("domand", json.dumps(dom, ensure_ascii=False)[:1500] if dom else None)
-    print("client", json.dumps(resp.get("client"), ensure_ascii=False)[:400])
-    if not dom: continue
-    vids = [v for v in dom["videos"] if v.get("isAvailable")]
-    auds = [a for a in dom["audios"] if a.get("isAvailable")]
-    track = (resp.get("client") or {}).get("watchTrackId") or tid
-    for label, outputs in [("lowest+best", [[min(vids, key=lambda v: v.get("bitRate", 0))["id"], max(auds, key=lambda a: a.get("bitRate", 0))["id"]]]),
-                           ("all", [[v["id"], a["id"]] for v in vids for a in auds])]:
-        body = json.dumps({"outputs": outputs}).encode()
-        h = dict(api_h); h.update({"X-Access-Right-Key": dom["accessRightKey"], "X-Request-With": "https://www.nicovideo.jp", "Content-Type": "application/json"})
-        s2, b2, hd = req(f"https://nvapi.nicovideo.jp/v1/watch/{vid}/access-rights/hls?actionTrackId={track}", data=body, headers=h, method="POST")
-        print("hls", label, s2, b2[:600], "set-cookie:", hd.get("Set-Cookie", "")[:200])
-        if s2 == 201 or s2 == 200:
-            url = json.loads(b2)["data"]["contentUrl"]
-            s3, b3, _ = req(url)
-            print("master", s3, b3[:800])
+variants = [
+  ("json-noheaders", "https://www.nicovideo.jp/watch/sm9?responseType=json", {}),
+  ("json-headers", "https://www.nicovideo.jp/watch/sm9?responseType=json", api_h),
+  ("json-track", f"https://www.nicovideo.jp/watch/sm9?responseType=json&actionTrackId={tid}", {}),
+  ("v3_guest", f"https://www.nicovideo.jp/api/watch/v3_guest/sm9?_frontendId=6&_frontendVersion=0&actionTrackId={tid}", api_h),
+  ("v3_guest-noheaders", f"https://www.nicovideo.jp/api/watch/v3_guest/sm9?_frontendId=6&_frontendVersion=0&actionTrackId={tid}", {}),
+  ("html", "https://www.nicovideo.jp/watch/sm9", {}),
+]
+for name, url, h in variants:
+    s, b, hd = req(url, headers=h)
+    print("\n--", name, s, "len", len(b))
+    if name == "html":
+        m = re.search(r'name="server-response" content="([^"]+)"', b)
+        print("server-response meta:", bool(m))
+        if m:
+            import html as H
+            j = json.loads(H.unescape(m.group(1)))
+            resp = j.get("data", {}).get("response", {})
+            print("keys", list(resp.keys())[:30])
+            dom = (resp.get("media") or {}).get("domand")
+            print("domand", json.dumps(dom, ensure_ascii=False)[:1200] if dom else None)
+            print("client", json.dumps(resp.get("client"), ensure_ascii=False)[:300])
+            if dom:
+                vids = [v for v in dom["videos"] if v.get("isAvailable")]
+                auds = [a for a in dom["audios"] if a.get("isAvailable")]
+                track = (resp.get("client") or {}).get("watchTrackId") or tid
+                for label, outputs in [("lowest+best", [[min(vids, key=lambda v: v.get("bitRate", 0))["id"], max(auds, key=lambda a: a.get("bitRate", 0))["id"]]]),
+                                       ("all", [[v["id"], a["id"]] for v in vids for a in auds])]:
+                    body = json.dumps({"outputs": outputs}).encode()
+                    hh = dict(api_h); hh.update({"X-Access-Right-Key": dom["accessRightKey"], "X-Request-With": "https://www.nicovideo.jp", "Content-Type": "application/json"})
+                    s2, b2, hd2 = req(f"https://nvapi.nicovideo.jp/v1/watch/sm9/access-rights/hls?actionTrackId={track}", data=body, headers=hh, method="POST")
+                    print("hls", label, s2, b2[:400], "| set-cookie:", hd2.get("Set-Cookie", "")[:160])
+                    if s2 in (200, 201):
+                        url2 = json.loads(b2)["data"]["contentUrl"]
+                        s3, b3, _ = req(url2)
+                        print("master", s3, b3[:900])
+                        am = re.search(r'URI="([^"]+)"', b3)
+                        if am:
+                            s4, b4, _ = req(urllib.parse.urljoin(url2, am.group(1)))
+                            print("audio playlist", s4, b4[:500])
+    else:
+        try:
+            j = json.loads(b); print("meta", j.get("meta"), "data keys", list((j.get("data") or {}).keys())[:20])
+            r = (j.get("data") or {}).get("response") or j.get("data") or {}
+            print("has media.domand:", bool((r.get("media") or {}).get("domand")))
+        except Exception as e:
+            print("not json:", b[:200])
+
+section("nvapi search variants")
+for params in [{"keyword": "千本桜", "sortKey": "hot", "sortOrder": "none", "pageSize": 2, "page": 1},
+               {"keyword": "千本桜", "sortKey": "viewCount", "sortOrder": "desc", "pageSize": 2, "page": 1, "genres": "music_sound"},
+               {"keyword": "千本桜", "pageSize": 2, "page": 1}]:
+    s, b, _ = req("https://nvapi.nicovideo.jp/v2/search/video?" + urllib.parse.urlencode(params), headers={"X-Frontend-Id": "6", "X-Frontend-Version": "0"})
+    try:
+        j = json.loads(b); print(params, s, j.get("meta"), [ (i["id"], i["title"][:20], i.get("owner",{}).get("name")) for i in j.get("data",{}).get("items",[])])
+    except Exception: print(params, s, b[:300])
