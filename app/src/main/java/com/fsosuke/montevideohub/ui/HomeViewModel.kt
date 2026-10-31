@@ -2,6 +2,7 @@ package com.fsosuke.montevideohub.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.fsosuke.montevideohub.data.FeedRepository
 import com.fsosuke.montevideohub.data.NicoSource
 import com.fsosuke.montevideohub.data.Source
 import com.fsosuke.montevideohub.data.SourceFilter
@@ -36,6 +37,7 @@ class HomeViewModel : ViewModel() {
         if (_state.value.loading) return
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
+            launch { FeedRepository.refresh() }
             val yt = async {
                 runCatching { YouTubeSource.home() }.fold(
                     { (name, tracks) -> HomeSection("YouTube · $name", Source.YOUTUBE, tracks) },

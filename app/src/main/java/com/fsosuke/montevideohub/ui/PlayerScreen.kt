@@ -27,6 +27,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.PersonAddAlt
+import androidx.compose.runtime.collectAsState
+import com.fsosuke.montevideohub.data.SubscriptionStore
 import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Videocam
@@ -84,6 +90,7 @@ fun PlayerScreen(
     showVideo: Boolean,
     onFullscreen: () -> Unit,
     onDownload: (Track, DownloadFormat) -> Unit,
+    onToggleSubscribe: (Track) -> Unit,
     onClose: () -> Unit,
 ) {
     val current = state.current ?: return
@@ -178,6 +185,30 @@ fun PlayerScreen(
                 SourceBadge(current.source)
                 Spacer(Modifier.width(6.dp))
                 Text(current.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+            }
+            current.toTrack()?.takeIf { it.channelId != null }?.let { track ->
+                val subs by SubscriptionStore.items.collectAsState()
+                val subscribed = subs.any { it.source == track.source && it.id == track.channelId }
+                FilterChip(
+                    selected = subscribed,
+                    onClick = { onToggleSubscribe(track) },
+                    label = { Text(if (subscribed) "Abonniert" else "Abonnieren") },
+                    leadingIcon = {
+                        Icon(
+                            if (subscribed) Icons.Rounded.NotificationsActive else Icons.Rounded.PersonAddAlt,
+                            null,
+                            Modifier.size(18.dp),
+                        )
+                    },
+                    colors = FilterChipDefaults.filterChipColors(
+                        labelColor = Snow,
+                        iconColor = Snow,
+                        selectedContainerColor = MontedioYellow,
+                        selectedLabelColor = Navy900,
+                        selectedLeadingIconColor = Navy900,
+                    ),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
             }
 
             SeekBar(state, onSeek = vm::seekTo)

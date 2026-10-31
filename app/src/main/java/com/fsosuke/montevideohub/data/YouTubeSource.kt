@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.MediaFormat
 import org.schabi.newpipe.extractor.ServiceList
+import org.schabi.newpipe.extractor.channel.ChannelInfo
+import org.schabi.newpipe.extractor.channel.ChannelInfoItem
 import org.schabi.newpipe.extractor.services.youtube.linkHandler.YoutubeSearchQueryHandlerFactory
 import org.schabi.newpipe.extractor.stream.DeliveryMethod
 import org.schabi.newpipe.extractor.stream.StreamInfo
@@ -41,6 +43,71 @@ object YouTubeSource {
         name to extractor.initialPage.items.toTracks()
     }
 
+    /** „…/channel/UCxxxx“ → „UCxxxx“; sonst die URL selbst (wird beim Abonnieren aufgelöst). */
+    fun channelIdFromUrl(url: String): String =
+        Regex("""/channel/(UC[A-Za-z0-9_-]{22})""").find(url)?.groupValues?.get(1) ?: url
+
+    /** Kanal-Infos für ein Abo (ID, Name, Avatar). [ref] = UC-ID oder Kanal-URL. */
+    suspend fun channel(ref: String): Subscription = withContext(Dispatchers.IO) {
+        val url = if (ref.startsWith("UC")) "https://www.youtube.com/channel/$ref" else ref
+        val info = ChannelInfo.getInfo(service, url)
+        Subscription(
+            source = Source.YOUTUBE,
+            id = channelIdFromUrl(info.url).takeIf { it.startsWith("UC") } ?: info.id.substringAfterLast('/'),
+            name = info.name,
+            avatar = info.avatars.maxByOrNull { it.height }?.url,
+        )
+    }
+
+    /** Kanalsuche (für „Kanal hinzufügen“). */
+    suspend fun searchChannels(query: String): List<Subscription> = withContext(Dispatchers.IO) {
+        val extractor = service.getSearchExtractor(query, listOf(YoutubeSearchQueryHandlerFactory.CHANNELS), "")
+        extractor.fetchPage()
+        extractor.initialPage.items.filterIsInstance<ChannelInfoItem>().map { c ->
+            Subscription(
+                source = Source.YOUTUBE,
+                id = channelIdFromUrl(c.url),
+                name = c.name,
+                avatar = c.thumbnails.maxByOrNull { it.height }?.url,
+                subscribers = c.subscriberCount,
+            )
+        }
+    }
+
+    /** Neueste Videos eines Kanals über den RSS-Feed (schnell, ohne Extraktor). */
+    suspend fun channelFeed(channelId: String): List<Track> = withContext(Dispatchers.IO) {
+        val xml = Http.client.newCall(
+            okhttp3.Request.Builder().url("https://www.youtube.com/feeds/videos.xml?channel_id=$channelId").build()
+        ).execute().use { r ->
+            if (!r.isSuccessful) throw IOException("HTTP ${r.code} (Kanal-Feed)")
+            r.body?.string().orEmpty()
+        }
+        parseRss(xml, channelId)
+    }
+
+    fun parseRss(xml: String, channelId: String): List<Track> {
+        fun tag(block: String, name: String) =
+            Regex("<$name[^>]*>([\\s\\S]*?)</$name>").find(block)?.groupValues?.get(1)?.trim()
+        fun unescape(s: String) = s.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+            .replace("&quot;", "\"").replace("&#39;", "'")
+        val author = tag(xml.substringBefore("<entry>"), "name")?.let(::unescape).orEmpty()
+        return Regex("<entry>([\\s\\S]*?)</entry>").findAll(xml).mapNotNull { m ->
+            val e = m.groupValues[1]
+            val id = tag(e, "yt:videoId") ?: return@mapNotNull null
+            Track(
+                source = Source.YOUTUBE,
+                id = id,
+                title = unescape(tag(e, "title").orEmpty()),
+                artist = author,
+                durationSec = -1,
+                thumbnail = Regex("""<media:thumbnail url="([^"]+)"""").find(e)?.groupValues?.get(1),
+                views = Regex("""<media:statistics views="(\d+)"""").find(e)?.groupValues?.get(1)?.toLongOrNull() ?: -1,
+                channelId = channelId,
+                uploadedAt = parseIsoDate(tag(e, "published")),
+            )
+        }.toList()
+    }
+
     /** Verfügbare Kiosk-IDs (für Diagnose). */
     fun kioskIds(): List<String> = service.kioskList.availableKiosks.toList()
 
@@ -57,6 +124,8 @@ object YouTubeSource {
                     durationSec = item.duration,
                     thumbnail = item.thumbnails.maxByOrNull { it.height }?.url,
                     views = item.viewCount,
+                    channelId = item.uploaderUrl?.let(::channelIdFromUrl),
+                    channelAvatar = runCatching { item.uploaderAvatars.maxByOrNull { it.height }?.url }.getOrNull(),
                 )
             }
 

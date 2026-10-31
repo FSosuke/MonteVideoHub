@@ -28,6 +28,8 @@ data class QueueEntry(
     val artist: String,
     val artwork: String?,
     val source: Source?,
+    val channelId: String? = null,
+    val channelAvatar: String? = null,
 )
 
 /** Für Downloads aus dem Player: Warteschlangen-Eintrag zurück in einen Track wandeln. */
@@ -41,6 +43,8 @@ fun QueueEntry.toTrack(): com.fsosuke.montevideohub.data.Track? {
         durationSec = -1,
         thumbnail = artwork,
         views = -1,
+        channelId = channelId,
+        channelAvatar = channelAvatar,
     )
 }
 
@@ -152,5 +156,7 @@ class PlayerConnection(context: Context, scope: CoroutineScope) {
         artist = mediaMetadata.artist?.toString().orEmpty(),
         artwork = mediaMetadata.artworkUri?.toString(),
         source = Source.entries.firstOrNull { mediaId.startsWith("${it.name}:") },
+        channelId = mediaMetadata.extras?.getString(MediaItems.EXTRA_CHANNEL_ID),
+        channelAvatar = mediaMetadata.extras?.getString(MediaItems.EXTRA_CHANNEL_AVATAR),
     )
 }

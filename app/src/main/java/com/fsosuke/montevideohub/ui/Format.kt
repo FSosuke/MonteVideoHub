@@ -11,6 +11,19 @@ fun formatDuration(seconds: Long): String {
     else String.format(Locale.ROOT, "%d:%02d", m, s)
 }
 
+/** „vor 3 Std.“ usw. */
+fun formatAge(epochMs: Long): String {
+    if (epochMs <= 0) return ""
+    val s = ((System.currentTimeMillis() - epochMs) / 1000).coerceAtLeast(0)
+    return when {
+        s < 3600 -> "vor ${(s / 60).coerceAtLeast(1)} Min."
+        s < 86_400 -> "vor ${s / 3600} Std."
+        s < 86_400L * 30 -> "vor ${s / 86_400} Tg."
+        s < 86_400L * 365 -> "vor ${s / (86_400L * 30)} Mon."
+        else -> "vor ${s / (86_400L * 365)} J."
+    }
+}
+
 fun formatMs(ms: Long): String = formatDuration(ms / 1000)
 
 fun formatViews(views: Long): String = when {

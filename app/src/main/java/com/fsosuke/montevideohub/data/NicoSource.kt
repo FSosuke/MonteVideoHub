@@ -56,21 +56,52 @@ object NicoSource {
         )
     }
 
-    /** Gemeinsames Format von Suche und Ranking. */
+    /** Neueste Videos eines Nutzers (für Abos). */
+    suspend fun userVideos(userId: String): List<Track> = withContext(Dispatchers.IO) {
+        val urls = listOf(
+            "https://nvapi.nicovideo.jp/v3/users/$userId/videos",
+            "https://nvapi.nicovideo.jp/v1/users/$userId/videos",
+        )
+        var last: Exception? = null
+        for (base in urls) {
+            try {
+                val url = base.toHttpUrl().newBuilder()
+                    .addQueryParameter("sortKey", "registeredAt")
+                    .addQueryParameter("sortOrder", "desc")
+                    .addQueryParameter("pageSize", "20")
+                    .addQueryParameter("page", "1")
+                    .build()
+                val items = Http.json(Request.Builder().url(url).nicoApiHeaders().build())
+                    .getJSONObject("data").optJSONArray("items")
+                return@withContext parseItems(items)
+            } catch (e: Exception) {
+                last = e
+            }
+        }
+        throw last ?: IOException("Unbekannter Fehler")
+    }
+
+    /** Gemeinsames Format von Suche, Ranking und Nutzer-Videos (ggf. in "essential" verpackt). */
     private fun parseItems(items: JSONArray?): List<Track> =
         items.objects()
-            .filter { !it.optBoolean("isPaymentRequired") }
+            .map { it.optJSONObject("essential") ?: it }
+            .filter { !it.optBoolean("isPaymentRequired") && it.has("id") }
             .map { o ->
+                val owner = o.optJSONObject("owner")
                 val thumb = o.optJSONObject("thumbnail")
                 Track(
                     source = Source.NICONICO,
                     id = o.getString("id"),
                     title = o.optString("title"),
-                    artist = o.optJSONObject("owner")?.optString("name")?.takeIf { it.isNotBlank() } ?: "niconico",
+                    artist = owner?.optString("name")?.takeIf { it.isNotBlank() && it != "null" } ?: "niconico",
                     durationSec = o.optLong("duration", -1),
                     thumbnail = listOf("largeUrl", "listingUrl", "url")
                         .firstNotNullOfOrNull { k -> thumb?.optString(k)?.takeIf { it.isNotBlank() && it != "null" } },
                     views = o.optJSONObject("count")?.optLong("view", -1) ?: -1,
+                    channelId = owner?.takeIf { it.optString("ownerType") == "user" }?.optString("id")
+                        ?.takeIf { it.isNotBlank() && it != "null" },
+                    channelAvatar = owner?.optString("iconUrl")?.takeIf { it.isNotBlank() && it != "null" },
+                    uploadedAt = parseIsoDate(o.optString("registeredAt")),
                 )
             }
 
@@ -154,3 +185,7 @@ object NicoSource {
 
 internal fun JSONArray?.objects(): List<JSONObject> =
     if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it) }
+
+/** ISO-8601 („2026-10-30T19:32:08+09:00“) → Epoch-ms, -1 bei Fehler. */
+internal fun parseIsoDate(value: String?): Long =
+    runCatching { java.time.OffsetDateTime.parse(value).toInstant().toEpochMilli() }.getOrDefault(-1L)

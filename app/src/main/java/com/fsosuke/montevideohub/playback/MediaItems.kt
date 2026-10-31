@@ -11,6 +11,8 @@ object MediaItems {
     const val EXTRA_MIME = "mime"
     const val EXTRA_VIDEO_URI = "videoUri"
     const val EXTRA_SOURCE = "source"
+    const val EXTRA_CHANNEL_ID = "channelId"
+    const val EXTRA_CHANNEL_AVATAR = "channelAvatar"
 
     fun from(track: Track, stream: ResolvedStream): MediaItem {
         val uri = Uri.parse(stream.uri)
@@ -29,7 +31,13 @@ object MediaItems {
                     .setTitle(track.title)
                     .setArtist(track.artist)
                     .setArtworkUri(track.thumbnail?.let(Uri::parse))
-                    .setExtras(bundleOf(EXTRA_SOURCE to track.source.name))
+                    .setExtras(
+                        bundleOf(
+                            EXTRA_SOURCE to track.source.name,
+                            EXTRA_CHANNEL_ID to track.channelId,
+                            EXTRA_CHANNEL_AVATAR to track.channelAvatar,
+                        )
+                    )
                     .build()
             )
             .build()

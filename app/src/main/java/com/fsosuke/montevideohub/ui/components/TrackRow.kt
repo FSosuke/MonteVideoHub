@@ -50,6 +50,7 @@ fun TrackRow(
     onPlayNext: () -> Unit,
     onEnqueue: () -> Unit,
     onDownload: (DownloadFormat) -> Unit,
+    onToggleSubscribe: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -111,6 +112,7 @@ fun TrackRow(
                             onClick = { menuOpen = false; onEnqueue() },
                         )
                         DownloadMenuItems(onDownload = { menuOpen = false; onDownload(it) })
+                        SubscribeMenuItem(track, onToggle = { menuOpen = false; onToggleSubscribe() })
                     }
                 }
             }

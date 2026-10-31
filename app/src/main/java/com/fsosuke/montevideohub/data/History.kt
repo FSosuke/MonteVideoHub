@@ -42,6 +42,8 @@ fun Track.toJson(): JSONObject = JSONObject()
     .put("duration", durationSec)
     .put("thumbnail", thumbnail)
     .put("views", views)
+    .put("channelId", channelId)
+    .put("channelAvatar", channelAvatar)
 
 fun JSONObject.toTrack(): Track? = runCatching {
     Track(
@@ -52,5 +54,7 @@ fun JSONObject.toTrack(): Track? = runCatching {
         durationSec = optLong("duration", -1),
         thumbnail = optString("thumbnail").takeIf { it.isNotBlank() && it != "null" },
         views = optLong("views", -1),
+        channelId = optString("channelId").takeIf { it.isNotBlank() && it != "null" },
+        channelAvatar = optString("channelAvatar").takeIf { it.isNotBlank() && it != "null" },
     )
 }.getOrNull()

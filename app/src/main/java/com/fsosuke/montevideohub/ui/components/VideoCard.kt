@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fsosuke.montevideohub.data.DownloadFormat
 import com.fsosuke.montevideohub.data.Track
+import com.fsosuke.montevideohub.ui.formatAge
 import com.fsosuke.montevideohub.ui.formatDuration
 import com.fsosuke.montevideohub.ui.formatViews
 import com.fsosuke.montevideohub.ui.theme.MontedioYellow
@@ -55,6 +56,7 @@ fun VideoCard(
     onPlayNext: () -> Unit,
     onEnqueue: () -> Unit,
     onDownload: (DownloadFormat) -> Unit,
+    onToggleSubscribe: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
@@ -104,6 +106,7 @@ fun VideoCard(
                         listOfNotNull(
                             track.artist.takeIf { it.isNotBlank() },
                             formatViews(track.views).ifEmpty { null },
+                            formatAge(track.uploadedAt).ifEmpty { null },
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -128,6 +131,7 @@ fun VideoCard(
                         onClick = { menuOpen = false; onEnqueue() },
                     )
                     DownloadMenuItems(onDownload = { menuOpen = false; onDownload(it) })
+                    SubscribeMenuItem(track, onToggle = { menuOpen = false; onToggleSubscribe() })
                 }
             }
         }

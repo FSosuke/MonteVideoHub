@@ -20,6 +20,11 @@ data class Track(
     val durationSec: Long,
     val thumbnail: String?,
     val views: Long,
+    /** YouTube: Kanal-ID (UC…) bzw. Kanal-URL; niconico: Nutzer-ID. null = unbekannt. */
+    val channelId: String? = null,
+    val channelAvatar: String? = null,
+    /** Veröffentlichungszeitpunkt (Epoch-ms), -1 = unbekannt */
+    val uploadedAt: Long = -1,
 ) {
     /** Eindeutiger Schlüssel, wird auch als Media3-mediaId verwendet. */
     val key: String get() = "${source.name}:$id"

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Subscriptions
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fsosuke.montevideohub.data.History
@@ -59,6 +61,7 @@ import org.schabi.newpipe.extractor.localization.Localization
 private enum class Tab(val label: String, val icon: ImageVector) {
     HOME("Start", Icons.Rounded.Home),
     SEARCH("Suche", Icons.Rounded.Search),
+    SUBS("Abos", Icons.Rounded.Subscriptions),
     DOWNLOADS("Downloads", Icons.Rounded.Download),
     SETTINGS("Einstellungen", Icons.Rounded.Settings),
 }
@@ -70,7 +73,19 @@ fun MonteVideoHubApp(
     updateVm: UpdateViewModel = viewModel(),
     homeVm: HomeViewModel = viewModel(),
     downloadsVm: DownloadsViewModel = viewModel(),
+    subsVm: SubscriptionsViewModel = viewModel(),
 ) {
+    val subscriptions by subsVm.subscriptions.collectAsStateWithLifecycle()
+    val feed by subsVm.feed.collectAsStateWithLifecycle()
+    val selectedSub by subsVm.selected.collectAsStateWithLifecycle()
+    val channelSearch by subsVm.search.collectAsStateWithLifecycle()
+    var channelSearchOpen by rememberSaveable { mutableStateOf(false) }
+    val importPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        subsVm.importFrom(uri)
+    }
+    val launchImport = {
+        importPicker.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain", "application/json", "application/octet-stream"))
+    }
     val update by updateVm.state.collectAsStateWithLifecycle()
     val search by searchVm.state.collectAsStateWithLifecycle()
     val home by homeVm.state.collectAsStateWithLifecycle()
@@ -97,14 +112,14 @@ fun MonteVideoHubApp(
     LaunchedEffect(Unit) { downloadsVm.pickFolder.collect { folderPicker.launch(it) } }
 
     LaunchedEffect(Unit) {
-        merge(playerVm.messages, updateVm.messages, downloadsVm.messages).collect { message ->
+        merge(playerVm.messages, updateVm.messages, downloadsVm.messages, subsVm.messages).collect { message ->
             snackbar.currentSnackbarData?.dismiss()
             snackbar.showSnackbar(message)
         }
     }
 
     BackHandler(enabled = playerOpen && !fullscreen && !nicoLogin) { playerOpen = false }
-    BackHandler(enabled = !playerOpen && !nicoLogin && tab != Tab.HOME) { tab = Tab.HOME }
+    BackHandler(enabled = !playerOpen && !nicoLogin && !channelSearchOpen && tab != Tab.HOME) { tab = Tab.HOME }
 
     // Wechsel auf „nur Audio“ oder Player leer → Vollbild verlassen
     LaunchedEffect(player.videoMode, player.current == null) {
@@ -149,7 +164,7 @@ fun MonteVideoHubApp(
                                         Icon(t.icon, contentDescription = t.label)
                                     }
                                 },
-                                label = { Text(t.label) },
+                                label = { Text(t.label, maxLines = 1, fontSize = 11.sp) },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Navy900,
                                     indicatorColor = MontedioYellow,
@@ -175,7 +190,28 @@ fun MonteVideoHubApp(
                     onPlayNext = playerVm::playNext,
                     onEnqueue = playerVm::enqueue,
                     onDownload = downloadsVm::request,
+                    onToggleSubscribe = subsVm::toggle,
+                    feed = feed.items,
+                    onShowSubscriptions = { tab = Tab.SUBS },
                     header = { Header(update.available != null, update.checking, onUpdateClick) },
+                )
+
+                Tab.SUBS -> SubscriptionsScreen(
+                    subscriptions = subscriptions,
+                    feed = feed,
+                    selected = selectedSub,
+                    resolving = resolving,
+                    contentPadding = padding,
+                    onSelect = subsVm::select,
+                    onUnsubscribe = subsVm::unsubscribe,
+                    onRefresh = subsVm::refresh,
+                    onAddChannel = { channelSearchOpen = true },
+                    onImport = launchImport,
+                    onPlay = playerVm::play,
+                    onPlayNext = playerVm::playNext,
+                    onEnqueue = playerVm::enqueue,
+                    onDownload = downloadsVm::request,
+                    onToggleSubscribe = subsVm::toggle,
                 )
 
                 Tab.SEARCH -> SearchScreen(
@@ -190,6 +226,7 @@ fun MonteVideoHubApp(
                     onPlayNext = playerVm::playNext,
                     onEnqueue = playerVm::enqueue,
                     onDownload = downloadsVm::request,
+                    onToggleSubscribe = subsVm::toggle,
                     updateAvailable = update.available != null,
                     checkingUpdate = update.checking,
                     onUpdateClick = onUpdateClick,
@@ -249,12 +286,25 @@ fun MonteVideoHubApp(
                 showVideo = !fullscreen,
                 onFullscreen = { fullscreen = true },
                 onDownload = downloadsVm::request,
+                onToggleSubscribe = subsVm::toggle,
                 onClose = { playerOpen = false },
             )
         }
 
         if (fullscreen) {
             FullscreenVideo(state = player, player = exoPlayer, vm = playerVm, onExit = { fullscreen = false })
+        }
+
+        if (channelSearchOpen) {
+            ChannelSearchScreen(
+                state = channelSearch,
+                subscriptions = subscriptions,
+                onQuery = subsVm::onSearchQuery,
+                onSearch = subsVm::searchChannels,
+                onSubscribe = subsVm::subscribe,
+                onUnsubscribe = subsVm::unsubscribe,
+                onClose = { channelSearchOpen = false },
+            )
         }
 
         if (nicoLogin) {

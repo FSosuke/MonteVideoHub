@@ -53,6 +53,20 @@ class LiveSourcesTest {
     }
 
     @Test
+    fun subscriptionFeeds(): Unit = runBlocking {
+        val yt = YouTubeSource.channelFeed("UCvpredjG93ifbCP1Y77JyFA")
+        println("YouTube-RSS YOASOBI: ${yt.size} Videos")
+        yt.take(3).forEach { println("  ${it.id} | ${it.title} | ${it.uploadedAt}") }
+        assertTrue(yt.isNotEmpty())
+        val nico = NicoSource.userVideos("449061")
+        println("niconico-Nutzer 449061: ${nico.size} Videos")
+        nico.take(3).forEach { println("  ${it.id} | ${it.title} | ${it.uploadedAt} | ch=${it.channelId}") }
+        assertTrue(nico.isNotEmpty())
+        val channels = runCatching { YouTubeSource.searchChannels("YOASOBI") }
+        println("Kanalsuche: ${channels.getOrNull()?.take(3)?.map { it.id + " " + it.name + " " + it.subscribers }} ${channels.exceptionOrNull() ?: ""}")
+    }
+
+    @Test
     fun homeFeeds(): Unit = runBlocking {
         println("YouTube-Kioske: ${YouTubeSource.kioskIds()}")
         val (name, yt) = YouTubeSource.home()

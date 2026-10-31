@@ -2,6 +2,7 @@ package com.fsosuke.montevideohub.ui
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +19,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,6 +52,9 @@ fun HomeScreen(
     onPlayNext: (Track) -> Unit,
     onEnqueue: (Track) -> Unit,
     onDownload: (Track, DownloadFormat) -> Unit,
+    onToggleSubscribe: (Track) -> Unit,
+    feed: List<Track>,
+    onShowSubscriptions: () -> Unit,
     header: @Composable () -> Unit,
 ) {
     PullToRefreshBox(
@@ -102,6 +107,30 @@ fun HomeScreen(
                 }
             }
 
+            val newFromSubs = feed.filter { state.filter.matches(it.source) }.take(5)
+            if (newFromSubs.isNotEmpty()) {
+                item(key = "subs_title") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) { SectionTitle("Neu von deinen Abos", null) }
+                        TextButton(onClick = onShowSubscriptions, modifier = Modifier.padding(end = 8.dp, top = 12.dp)) {
+                            Text("Alle", color = MontedioYellow, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+                items(newFromSubs, key = { "s_" + it.key }) { track ->
+                    VideoCard(
+                        track = track,
+                        resolving = track.key in resolving,
+                        onPlay = { onPlay(track) },
+                        onPlayNext = { onPlayNext(track) },
+                        onEnqueue = { onEnqueue(track) },
+                        onDownload = { onDownload(track, it) },
+                        onToggleSubscribe = { onToggleSubscribe(track) },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+
             state.sections.filter { state.filter.matches(it.source) }.forEach { section ->
                 item(key = "t_" + section.title) { SectionTitle(section.title, section.source) }
                 section.error?.let { err ->
@@ -122,6 +151,7 @@ fun HomeScreen(
                         onPlayNext = { onPlayNext(track) },
                         onEnqueue = { onEnqueue(track) },
                         onDownload = { onDownload(track, it) },
+                        onToggleSubscribe = { onToggleSubscribe(track) },
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }

@@ -71,6 +71,7 @@ fun SearchScreen(
     onPlayNext: (Track) -> Unit,
     onEnqueue: (Track) -> Unit,
     onDownload: (Track, DownloadFormat) -> Unit,
+    onToggleSubscribe: (Track) -> Unit,
     updateAvailable: Boolean,
     checkingUpdate: Boolean,
     onUpdateClick: () -> Unit,
@@ -150,6 +151,7 @@ fun SearchScreen(
                             onPlayNext = { onPlayNext(track) },
                             onEnqueue = { onEnqueue(track) },
                             onDownload = { onDownload(track, it) },
+                            onToggleSubscribe = { onToggleSubscribe(track) },
                         )
                     }
                 }
